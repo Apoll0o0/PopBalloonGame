@@ -54,6 +54,8 @@ public class BalloonGenerator : MonoBehaviour
 
     }
 
+    public Sprite[] destrSp;
+
     IEnumerator Spawn()
     {
         SpawnBalloon();
