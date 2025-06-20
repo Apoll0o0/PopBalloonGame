@@ -74,12 +74,12 @@ public class BalloonGenerator : MonoBehaviour
         spawnDelay *= 0.999f;
     }
 
-    void GameExit()
+    public void GameExit()
     {
         Application.Quit();
     }
 
-    void RestartGame()
+    public void RestartGame()
     {
         Time.timeScale = 1.0f;
         SceneManager.LoadScene(0);
