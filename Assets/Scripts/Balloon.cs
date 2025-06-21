@@ -1,60 +1,56 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
-public class Balloon : MonoBehaviour
+public class Balloon : MonoBehaviour, IPointerClickHandler
 {
-    AudioSource audioSource;
+    [HideInInspector] public BalloonType type;           
+    [HideInInspector] public BalloonGenerator generator; 
 
-    Image image;
+    Image img;
+    AudioSource audioSrc;
 
-    BalloonGenerator bl;
+    bool popped = false;
 
-    bool isTouched = false;
-
-    int spriteNumber = 0;
-
-    private void Start()
+    void Awake()
     {
-        bl = transform.root.GetComponent<BalloonGenerator>();
-        audioSource = transform.GetComponent<AudioSource>();
-        image = GetComponent<Image>();
-        Color col = new Color(Random.Range(0f, 1f), Random.Range(0f, 1f), Random.Range(0f, 1f));
-        col.a = Random.Range(0.6f, 1f);
-        image.color = col;
+        img = GetComponent<Image>();
+        audioSrc = GetComponent<AudioSource>();
     }
 
-    public void OnTouch()
+    public void Init(BalloonType t, BalloonGenerator gen, float velocity)
     {
-        if (isTouched || bl.isOnMenu) return;
-        isTouched = true;
-        bl.killedCount++;
-        bl.ShowKilledText();
-        audioSource.Play();
-        StartCoroutine(ShowAnim());
-        Destroy(gameObject,0.8f);
-    }
-    IEnumerator ShowAnim()
-    {
-        image.sprite = bl.destrSp[spriteNumber];
-        spriteNumber++;
-        if (spriteNumber == bl.destrSp.Length)
-        {
-            image.enabled = false;
-            yield break;
-        }
-        yield return new WaitForSeconds(0.1f);
-        StartCoroutine(ShowAnim());
-        yield return null;
+        type = t;
+        generator = gen;
+
+        img.color = t.color;
+        GetComponent<Rigidbody2D>().velocity = new Vector2(0f, velocity);
     }
 
-    void OnCollisionEnter2D(Collision2D collision)
+    public void OnPointerClick(PointerEventData eventData) { Pop(); }
+
+    void Pop()
     {
-        bl.leackedCount++;
-        bl.ShowLeackedText();
+        if (popped || generator.IsMenu) return;
+        popped = true;
+
+        generator.OnBalloonPopped(type);
+
+        AudioClip clip = type.popSfx ? type.popSfx : generator.defaultPopSfx;
+        if (clip) audioSrc.PlayOneShot(clip);
+
+        if (type.popVfx)
+            Instantiate(type.popVfx, transform.position, Quaternion.identity, generator.transform);
+
+        img.enabled = false;
+        Destroy(gameObject, clip ? clip.length : 0.2f);
+    }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (!other.CompareTag("TopBoundary") || popped) return;
+
+        generator.OnBalloonReachedTop(type);
         Destroy(gameObject);
     }
-
-
 }

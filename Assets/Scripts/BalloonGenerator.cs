@@ -1,127 +1,165 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 using UnityEngine.SceneManagement;
-using Unity.VisualScripting;
+using TMPro;
 
 public class BalloonGenerator : MonoBehaviour
 {
-    [SerializeField]
+    [Header("UI")]
+    [SerializeField] TextMeshProUGUI scoreText;
+    [SerializeField] TextMeshProUGUI gameOverText;
+    [SerializeField] TextMeshProUGUI detailText; 
+    [SerializeField] GameObject menuPanel;
+    [SerializeField] GameObject gameOverPanel;
 
-    TextMeshProUGUI killedText;
+    [Header("Prefabs & Assets")]
+    [SerializeField] GameObject balloonPrefab;
+    [SerializeField] AudioClip menuMusic;
+    [SerializeField] AudioClip gameMusic;
+    [SerializeField] public AudioClip defaultPopSfx;
+    [SerializeField] List<BalloonType> balloonTypes; 
 
-    [SerializeField]
+    [Header("Spawn Ayarlarý")]
+    [SerializeField] float initialVelocity = 80f;
+    [SerializeField] float initialDelay = 0.5f;
 
-    TextMeshProUGUI leackedText;
+    // === Oyun verileri ===
+    public bool IsMenu { get; private set; } = true;
+    float currDelay, currVelocity;
+    int score = 0;
+    Dictionary<BalloonType, int> hitCounts = new(); 
+    const int WIN_SCORE = 50;
+    const int LOSE_SCORE = 0;
 
-    [SerializeField]
+    AudioSource musicSrc;
 
-    TextMeshProUGUI gameOverText;
-
-    [SerializeField]
-
-    GameObject balloonPrefab;
-
-    [HideInInspector]
-    public int killedCount = 0;
-
-    [HideInInspector]
-    public int leackedCount = 0;
-
-    float spawnDelay = 0.5f;
-
-    float velocity = 80f;
-
-    bool gameIsOver = false;
-
-    public bool isOnMenu = false;
-
-    int maxHP = 10;
-
-    int curHP;
-
-    Rigidbody2D rb;
-
-    AudioSource audioSource;
-
-    private void Start()
+    void Start()
     {
-        audioSource = GetComponent<AudioSource>();
-        curHP = maxHP;
-        StartCoroutine(Spawn());
+        currDelay = initialDelay;
+        currVelocity = initialVelocity;
+        musicSrc = GetComponent<AudioSource>();
 
+        UpdateScoreUI();
+        PlayMusic(menuMusic);
     }
 
-    public Sprite[] destrSp;
-
-    IEnumerator Spawn()
+    public void OnStartButton()
     {
-        SpawnBalloon();
-        yield return new WaitForSeconds(spawnDelay);
-        StartCoroutine(Spawn());
-        yield return null;
+        if (!IsMenu) return;
+
+        menuPanel.SetActive(false);
+        IsMenu = false;
+        Time.timeScale = 1f;
+
+        PlayMusic(gameMusic);
+        StartCoroutine(SpawnRoutine());
+    }
+
+    public void OnExitButton() => Application.Quit();
+
+    public void OnRestartButton() => SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+
+    public void OnMainMenuButton()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    IEnumerator SpawnRoutine()
+    {
+        while (!IsMenu)
+        {
+            SpawnBalloon();
+            yield return new WaitForSeconds(currDelay);
+            // Zamanla hýzlanma
+            currVelocity *= 1.001f;
+            currDelay *= 0.999f;
+        }
     }
 
     void SpawnBalloon()
     {
-        Vector2 spawnPosition = new Vector2(Screen.width * Random.Range(0.1f, 0.9f), -200f);
-        GameObject obj = Instantiate(balloonPrefab, spawnPosition, transform.rotation, transform);
-        rb = obj.GetComponent<Rigidbody2D>();
-        rb.velocity = new Vector2(0f, velocity);
-        velocity *= 1.001f;
-        spawnDelay *= 0.999f;
+        var type = balloonTypes[Random.Range(0, balloonTypes.Count)];
+
+        // 1. Rastgele ekran pozisyonu
+        Vector2 screenPos = new Vector2(Screen.width * Random.Range(0.1f, 0.9f), -100f);
+
+        // 2. Canvas RectTransform’unu al
+        RectTransform canvasRect = GetComponentInParent<Canvas>().GetComponent<RectTransform>();
+
+        // 3. Ekran pozisyonunu local UI pozisyonuna çevir
+        Vector2 localPoint;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPos, null, out localPoint);
+
+        // 4. Instantiate et ve pozisyonu ata
+        GameObject obj = Instantiate(balloonPrefab, canvasRect); // canvas'ý parent yap
+        RectTransform rt = obj.GetComponent<RectTransform>();
+        rt.anchoredPosition = localPoint;
+
+        obj.name = $"Balloon_{type.name}";
+        var balloon = obj.GetComponent<Balloon>();
+        balloon.Init(type, this, currVelocity);
     }
 
-    public void GameExit()
+    public void OnBalloonPopped(BalloonType type)
     {
-        Application.Quit();
+        AddScore(type.score);
+        CountHit(type);
     }
 
-    public void RestartGame()
+    public void OnBalloonReachedTop(BalloonType type)
     {
-        Time.timeScale = 1.0f;
-        SceneManager.LoadScene(0);
+        if (type.score > 0) AddScore(type.score);
     }
 
-    public void ShowKilledText()
+    void AddScore(int amount)
     {
-        killedText.text = "Patlatýldý: " + killedCount;
+        score += amount;
+        UpdateScoreUI();
+        CheckGameEnd();
     }
 
-    [SerializeField]
-
-    GameObject menuObj;
-    public void ShowLeackedText()
+    void CountHit(BalloonType type)
     {
-        leackedText.text = "Kaçýrýlan: " + leackedCount;
-        audioSource.Play();
-        curHP--;
-        if(curHP == 0)
+        if (!hitCounts.ContainsKey(type)) hitCounts[type] = 0;
+        hitCounts[type]++;
+    }
+
+    void UpdateScoreUI() => scoreText.text = $"Skor: {score}";
+
+    void CheckGameEnd()
+    {
+        if (score >= WIN_SCORE || score < LOSE_SCORE)
         {
-            gameIsOver = true;
-            menuObj.SetActive(true);
-            Time.timeScale = 0.0f;
-            isOnMenu = true;
+            StopAllCoroutines();
+            IsMenu = true;
+            Time.timeScale = 0f;
+
+            int highScore = Mathf.Max(score, PlayerPrefs.GetInt("HighScore", 0));
+            PlayerPrefs.SetInt("HighScore", highScore);
+
+            gameOverText.text = $"Son Skor: {score}\nEn Yüksek: {highScore}";
+            detailText.text = BuildDetailText();
+
+            gameOverPanel.SetActive(true);
+            PlayMusic(menuMusic);
         }
     }
 
-    public void StartMenu()
+    string BuildDetailText()
     {
-        if (gameIsOver) return;
-        if (!isOnMenu)
-        {
-            menuObj.SetActive(true);
-            isOnMenu = true;
-            Time.timeScale = 0.0f;
-        }
-        else
-        {
-            menuObj.SetActive(false);
-            Time.timeScale = 1.0f;
-            isOnMenu= false;
-        }
+        System.Text.StringBuilder sb = new();
+        foreach (var kv in hitCounts)
+            sb.AppendLine($"{kv.Key.name}: {kv.Value}");
+        return sb.ToString();
     }
 
+    void PlayMusic(AudioClip clip)
+    {
+        if (!clip) return;
+        musicSrc.Stop();
+        musicSrc.clip = clip;
+        musicSrc.loop = true;
+        musicSrc.Play();
+    }
 }
