@@ -24,7 +24,6 @@ public class BalloonGenerator : MonoBehaviour
     [SerializeField] float initialVelocity = 80f;
     [SerializeField] float initialDelay = 0.5f;
 
-    // === Oyun verileri ===
     public bool IsMenu { get; private set; } = true;
     float currDelay, currVelocity;
     int score = 0;
@@ -81,18 +80,14 @@ public class BalloonGenerator : MonoBehaviour
     {
         var type = balloonTypes[Random.Range(0, balloonTypes.Count)];
 
-        // 1. Rastgele ekran pozisyonu
         Vector2 screenPos = new Vector2(Screen.width * Random.Range(0.1f, 0.9f), -100f);
 
-        // 2. Canvas RectTransform’unu al
         RectTransform canvasRect = GetComponentInParent<Canvas>().GetComponent<RectTransform>();
 
-        // 3. Ekran pozisyonunu local UI pozisyonuna çevir
         Vector2 localPoint;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPos, null, out localPoint);
 
-        // 4. Instantiate et ve pozisyonu ata
-        GameObject obj = Instantiate(balloonPrefab, canvasRect); // canvas'ý parent yap
+        GameObject obj = Instantiate(balloonPrefab, canvasRect); 
         RectTransform rt = obj.GetComponent<RectTransform>();
         rt.anchoredPosition = localPoint;
 
