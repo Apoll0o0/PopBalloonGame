@@ -70,7 +70,6 @@ public class BalloonGenerator : MonoBehaviour
         {
             SpawnBalloon();
             yield return new WaitForSeconds(currDelay);
-            // Zamanla hýzlanma
             currVelocity *= 1.001f;
             currDelay *= 0.999f;
         }
@@ -121,6 +120,14 @@ public class BalloonGenerator : MonoBehaviour
     }
 
     void UpdateScoreUI() => scoreText.text = $"Skor: {score}";
+    void DestroyAllBalloons()
+    {
+        Balloon[] allBalloons = FindObjectsOfType<Balloon>();
+        foreach (var balloon in allBalloons)
+        {
+            Destroy(balloon.gameObject);
+        }
+    }
 
     void CheckGameEnd()
     {
@@ -132,6 +139,9 @@ public class BalloonGenerator : MonoBehaviour
 
             int highScore = Mathf.Max(score, PlayerPrefs.GetInt("HighScore", 0));
             PlayerPrefs.SetInt("HighScore", highScore);
+            Debug.Log("Kayýtlý yüksek skor: " + PlayerPrefs.GetInt("HighScore", 0));
+
+            DestroyAllBalloons();  
 
             gameOverText.text = $"Son Skor: {score}\nEn Yüksek: {highScore}";
             detailText.text = BuildDetailText();
@@ -140,6 +150,7 @@ public class BalloonGenerator : MonoBehaviour
             PlayMusic(menuMusic);
         }
     }
+
 
     string BuildDetailText()
     {

@@ -8,5 +8,5 @@ public class BalloonType : ScriptableObject
     public int score = 1;               
     [Header("Opsiyonel")]
     public AudioClip popSfx;            
-    public ParticleSystem popVfx;      
+    public GameObject popVfx;      
 }

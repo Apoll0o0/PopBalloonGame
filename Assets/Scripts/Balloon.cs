@@ -40,11 +40,26 @@ public class Balloon : MonoBehaviour, IPointerClickHandler
         if (clip) audioSrc.PlayOneShot(clip);
 
         if (type.popVfx)
-            Instantiate(type.popVfx, transform.position, Quaternion.identity, generator.transform);
+        {
+            Vector3 screenPos = RectTransformUtility.WorldToScreenPoint(null, transform.position);
+
+            Vector3 worldPos = Camera.main.ScreenToWorldPoint(screenPos);
+
+            worldPos.z = 0f;
+
+            GameObject vfx = Instantiate(type.popVfx, worldPos, Quaternion.identity);
+
+            ParticleSystem ps = vfx.GetComponent<ParticleSystem>();
+            if (ps != null) ps.Play();
+
+            Destroy(vfx, 2f);
+            Debug.Log("POP efekt sahneye eklendi!");
+        }
 
         img.enabled = false;
         Destroy(gameObject, clip ? clip.length : 0.2f);
     }
+
 
     void OnTriggerEnter2D(Collider2D other)
     {

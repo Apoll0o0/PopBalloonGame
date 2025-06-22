@@ -15,4 +15,4 @@ MonoBehaviour:
   color: {r: 0.19362764, g: 0.27703732, b: 0.9245283, a: 1}
   score: 1
   popSfx: {fileID: 8300000, guid: d9052ac367729ff4eaef4e97501509f1, type: 3}
-  popVfx: {fileID: 0}
+  popVfx: {fileID: 1315834945223171213, guid: 7f42527caba2f8642a382403b121a20e, type: 3}
